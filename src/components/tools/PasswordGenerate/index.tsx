@@ -1,18 +1,25 @@
 import React, {useEffect, useState} from 'react';
 import {
-  Alert,
   Box,
   Button,
   Checkbox,
+  Chip,
   Container,
+  Divider,
   FormControlLabel,
   Grid,
-  Snackbar,
   Stack,
   TextField,
-  Typography
+  Typography,
+  IconButton,
+  Tooltip,
+  Snackbar,
+  Alert,
 } from '@mui/material';
-import Translate, {translate} from "@docusaurus/Translate";
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import Translate, {translate} from '@docusaurus/Translate';
+import PasswordStrengthMeter from '@site/src/components/PasswordStrengthMeter';
+import PrivacyNotice from '@site/src/components/PrivacyNotice';
 
 export default function RandomPasswordGenerator() {
   const defaultUppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -20,7 +27,7 @@ export default function RandomPasswordGenerator() {
   const defaultSymbols = '!@#$%^&*()-_=+[]{}|;:,.<>?/';
 
   const [passwordList, setPasswordList] = useState<string[]>([]);
-  const [length, setLength] = useState(12);
+  const [length, setLength] = useState(16);
   const [uppercase, setUppercase] = useState(true);
   const [numbers, setNumbers] = useState(true);
   const [symbols, setSymbols] = useState(true);
@@ -30,348 +37,234 @@ export default function RandomPasswordGenerator() {
   const [customSymbols, setCustomSymbols] = useState(defaultSymbols);
   const [excludeChars, setExcludeChars] = useState('');
   const [count, setCount] = useState(1);
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
-  const [snackbarMessage, setSnackbarMessage] = useState('');
-  const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error'>('success');
-
+  const [snackbar, setSnackbar] = useState<{open: boolean; msg: string; severity: 'success' | 'error'}>({
+    open: false, msg: '', severity: 'success',
+  });
 
   useEffect(() => {
     generatePassword();
   }, []);
 
-  const getValidCharset = (customCharset: string, defaultCharset: string) => {
-    return customCharset.trim() === '' ? defaultCharset : customCharset;
-  };
-
-
-  const calculateCrackTime = (password: string) => {
-    let availableCharset = 'abcdefghijklmnopqrstuvwxyz'; // 默认小写字母
-
-    // 检查密码字符集
-    const length = password.length;
-
-    if (/[A-Z]/.test(password)) availableCharset += defaultUppercase; // 如果包含大写字母
-    if (/\d/.test(password)) availableCharset += defaultNumbers; // 如果包含数字
-    if (/[^a-zA-Z0-9]/.test(password)) availableCharset += defaultSymbols; // 如果包含符号
-
-    const charsetSize = availableCharset.length;
-
-    // 假设每秒尝试 10 亿次
-    const attemptsPerSecond = 1e9;
-
-    // 计算总的密码空间
-    const totalCombinations = Math.pow(charsetSize, length);
-
-    // 计算破解时间（秒）
-    const timeInSeconds = totalCombinations / attemptsPerSecond;
-
-    // 将秒数转化为年、月、天、小时、分钟、秒的格式
-    const years = Math.floor(timeInSeconds / (60 * 60 * 24 * 365));
-    const months = Math.floor(timeInSeconds / (60 * 60 * 24 * 30));
-    const days = Math.floor(timeInSeconds / (60 * 60 * 24));
-    const hours = Math.floor((timeInSeconds % (60 * 60 * 24)) / (60 * 60));
-    const minutes = Math.floor((timeInSeconds % (60 * 60)) / 60);
-    const seconds = Math.floor(timeInSeconds % 60);
-
-    return {
-      years,
-      months,
-      days,
-      hours,
-      minutes,
-      seconds,
-      totalSeconds: timeInSeconds, // 返回总秒数
-    };
-  };
-// 获取密码复杂度的颜色
-  const getPasswordComplexityColor = (crackTime: {
-    totalSeconds: number,
-    years: number,
-    months: number,
-    days: number,
-    hours: number,
-    minutes: number,
-    seconds: number
-  }): string => {
-    const {years, months, days, hours, minutes, seconds} = crackTime;
-
-    if (years > 0) {
-      // 如果破解时间超过1年，则返回强
-      return 'success';
-    } else if (months > 0) {
-      // 如果破解时间在1个月到1年之间，则返回中
-      return 'success';
-    } else if (days > 0) {
-      // 如果破解时间在1天到1个月之间，则返回警告
-      return 'warning';
-    } else if (hours > 0 || minutes > 10) {
-      // 如果破解时间在10分钟到1天之间，则返回警告
-      return 'warning';
-    } else if (seconds < 60) {
-      // 如果破解时间少于1分钟，则返回错误
-      return 'error';
-    }
-
-    return 'error'; // 默认返回错误
-  };
-
-// 格式化时间
-  const formatCrackTime = (time: {
-    years: number,
-    months: number,
-    days: number,
-    hours: number,
-    minutes: number,
-    seconds: number
-  }) => {
-    if (time.years > 0) return `${time.years}年 ${time.months}月`;
-    if (time.months > 0) return `${time.months}月 ${time.days}天`;
-    if (time.days > 0) return `${time.days}天 ${time.hours}小时`;
-    if (time.hours > 0) return `${time.hours}小时 ${time.minutes}分钟`;
-    if (time.minutes > 0) return `${time.minutes}分钟 ${time.seconds}秒`;
-    return `${time.seconds}秒`;
+  const getValidCharset = (custom: string, fallback: string) => {
+    return custom.trim() === '' ? fallback : custom;
   };
 
   const generatePassword = () => {
     let availableCharset = 'abcdefghijklmnopqrstuvwxyz';
 
-    // 根据配置添加字符集
     if (uppercase) availableCharset += getValidCharset(customUppercase, defaultUppercase);
     if (numbers) availableCharset += getValidCharset(customNumbers, defaultNumbers);
     if (symbols) availableCharset += getValidCharset(customSymbols, defaultSymbols);
 
-    // 排除不需要的字符
-    const filteredCharset = availableCharset.replace(new RegExp(`[${excludeChars}]`, 'g'), '');
+    const filteredCharset = availableCharset.replace(new RegExp(`[${excludeChars.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}]`, 'g'), '');
 
-    // 存储生成的密码列表
-    const newPasswordList: string[] = [];
+    if (filteredCharset.length === 0) {
+      setSnackbar({open: true, msg: translate({message: '可用字符集为空，请检查配置'}), severity: 'error'});
+      return;
+    }
 
+    const list: string[] = [];
     for (let i = 0; i < count; i++) {
       let password = '';
-
-      // 如果 notRep 为 true 且密码长度小于可用字符集的长度，保证没有重复字符
       const charsetArray = filteredCharset.split('');
       if (notRep && length <= charsetArray.length) {
-        // 随机打乱字符集并取出前 length 个字符
-        const shuffledCharset = [...charsetArray].sort(() => Math.random() - 0.5);
-        password = shuffledCharset.slice(0, length).join('');
+        const shuffled = [...charsetArray].sort(() => Math.random() - 0.5);
+        password = shuffled.slice(0, length).join('');
       } else {
-        // 如果允许重复字符
         for (let j = 0; j < length; j++) {
-          const randomIndex = Math.floor(Math.random() * filteredCharset.length);
-          password += filteredCharset[randomIndex];
+          password += filteredCharset[Math.floor(Math.random() * filteredCharset.length)];
         }
       }
-
-      newPasswordList.push(password);
+      list.push(password);
     }
-
-    setPasswordList(newPasswordList);
+    setPasswordList(list);
   };
 
-
-  const copyToClipboard = async (password: string) => {
+  const copyToClipboard = async (text: string, msg?: string) => {
     try {
-      await navigator.clipboard.writeText(password);
-      setSnackbarSeverity('success');
-      setSnackbarMessage(translate({message: '密码复制成功！'}));
-    } catch (error) {
-      setSnackbarSeverity('error');
-      setSnackbarMessage(translate({message: '复制失败，请重试。'}));
-    } finally {
-      setSnackbarOpen(true);
+      await navigator.clipboard.writeText(text);
+      setSnackbar({open: true, msg: msg || translate({message: '复制成功！'}), severity: 'success'});
+    } catch {
+      setSnackbar({open: true, msg: translate({message: '复制失败'}), severity: 'error'});
     }
-  };
-
-  const copyAllToClipboard = async () => {
-    try {
-      await navigator.clipboard.writeText(passwordList.join('\n'));
-      setSnackbarSeverity('success');
-      setSnackbarMessage(translate({message: '所有密码复制成功！'}));
-    } catch (error) {
-      setSnackbarSeverity('error');
-      setSnackbarMessage(translate({message: '批量复制失败，请重试。'}));
-    } finally {
-      setSnackbarOpen(true);
-    }
-  };
-
-  const handleGenerate = () => {
-    generatePassword();
   };
 
   return (
-    <Container maxWidth="lg" sx={{padding: 4}}>
-      <Grid container spacing={2}>
-        <Grid size={{xs: 12, md: 6, lg: 4}}>
-          <Snackbar
-            open={snackbarOpen}
-            autoHideDuration={3000}
-            onClose={() => setSnackbarOpen(false)}
-            anchorOrigin={{vertical: 'top', horizontal: 'center'}}
-          >
-            <Alert
-              onClose={() => setSnackbarOpen(false)}
-              severity={snackbarSeverity}
-              sx={{width: '100%'}}
-            >
-              {snackbarMessage}
-            </Alert>
-          </Snackbar>
+    <Container maxWidth="lg" sx={{py: 3}}>
+      <Grid container spacing={3}>
+        {/* Config Panel */}
+        <Grid size={{xs: 12, md: 5, lg: 4}}>
+          <Box sx={{p: 2.5, border: '1px solid #e0e0e0', borderRadius: 2, backgroundColor: '#fafafa'}}>
+            <PrivacyNotice/>
 
-          <Box sx={{padding: 2, border: '1px solid #ddd', borderRadius: '8px', marginBottom: 4}}>
-            <Typography variant="h6" gutterBottom>
+            <Typography variant="h6" gutterBottom sx={{fontWeight: 700}}>
               <Translate>随机密码生成配置</Translate>
             </Typography>
 
             <TextField
               type="number"
               value={length}
-              onChange={(e) => setLength(Number(e.target.value))}
-              label={translate({message: "密码长度"})}
+              onChange={(e) => setLength(Math.max(1, Math.min(128, Number(e.target.value))))}
+              label={translate({message: '密码长度'})}
               fullWidth
-              variant="outlined"
-              sx={{marginBottom: 2}}
+              sx={{mb: 2}}
+              size="small"
+              inputProps={{min: 1, max: 128}}
             />
 
             <FormControlLabel
-              control={<Checkbox checked={uppercase} onChange={() => setUppercase(!uppercase)}/>}
-              label={translate({message: "包含大写字母"})}
+              control={<Checkbox checked={uppercase} onChange={() => setUppercase(!uppercase)} size="small"/>}
+              label={<Translate>包含大写字母</Translate>}
             />
             {uppercase && (
               <TextField
                 value={customUppercase}
                 onChange={(e) => setCustomUppercase(e.target.value)}
-                label={translate({message: "自定义大写字母"})}
+                label={translate({message: '自定义大写字母'})}
                 fullWidth
-                variant="outlined"
-                sx={{marginBottom: 2}}
+                sx={{mb: 1}}
+                size="small"
               />
             )}
 
             <FormControlLabel
-              control={<Checkbox checked={numbers} onChange={() => setNumbers(!numbers)}/>}
-              label={translate({message: "包含数字"})}
+              control={<Checkbox checked={numbers} onChange={() => setNumbers(!numbers)} size="small"/>}
+              label={<Translate>包含数字</Translate>}
             />
             {numbers && (
               <TextField
                 value={customNumbers}
                 onChange={(e) => setCustomNumbers(e.target.value)}
-                label={translate({message: "自定义数字"})}
+                label={translate({message: '自定义数字'})}
                 fullWidth
-                variant="outlined"
-                sx={{marginBottom: 2}}
+                sx={{mb: 1}}
+                size="small"
               />
             )}
 
             <FormControlLabel
-              control={<Checkbox checked={symbols} onChange={() => setSymbols(!symbols)}/>}
-              label={translate({message: "包含特殊字符"})}
+              control={<Checkbox checked={symbols} onChange={() => setSymbols(!symbols)} size="small"/>}
+              label={<Translate>包含特殊字符</Translate>}
             />
             {symbols && (
               <TextField
                 value={customSymbols}
                 onChange={(e) => setCustomSymbols(e.target.value)}
-                label={translate({message: "自定义特殊字符"})}
+                label={translate({message: '自定义特殊字符'})}
                 fullWidth
-                variant="outlined"
-                sx={{marginBottom: 2}}
+                sx={{mb: 1}}
+                size="small"
               />
             )}
 
-            <FormControlLabel
-              control={<Checkbox checked={notRep} onChange={() => setNotRep(!notRep)}/>}
-              label={translate({message: "字符不重复"})}
-            />
+            <Divider sx={{my: 1.5}}/>
 
+            <FormControlLabel
+              control={<Checkbox checked={notRep} onChange={() => setNotRep(!notRep)} size="small"/>}
+              label={<Translate>字符不重复</Translate>}
+            />
             <TextField
               value={excludeChars}
               onChange={(e) => setExcludeChars(e.target.value)}
-              label={translate({message: "排除字符"})}
+              label={translate({message: '排除字符'})}
               fullWidth
-              variant="outlined"
-              sx={{marginBottom: 2}}
+              sx={{my: 1}}
+              size="small"
+              placeholder={translate({message: '输入要排除的字符'})}
             />
 
             <TextField
               type="number"
               value={count}
-              onChange={(e) => setCount(Number(e.target.value))}
-              label={translate({message: "生成个数"})}
+              onChange={(e) => setCount(Math.max(1, Math.min(50, Number(e.target.value))))}
+              label={translate({message: '生成个数'})}
               fullWidth
-              variant="outlined"
-              sx={{marginBottom: 2}}
+              sx={{my: 1}}
+              size="small"
+              inputProps={{min: 1, max: 50}}
             />
 
-            <Button variant="contained" color="primary" fullWidth onClick={handleGenerate}>
+            <Button variant="contained" color="primary" fullWidth onClick={generatePassword} size="large">
               <Translate>生成密码</Translate>
             </Button>
           </Box>
         </Grid>
 
-        <Grid size={{xs: 12, md: 6, lg: 8}}>
-          <Box sx={{padding: 2, border: '1px solid #ddd', borderRadius: '8px'}}>
-            <Button
-              variant="outlined"
-              color="secondary"
-              sx={{marginBottom: 2}}
-              fullWidth
-              onClick={copyAllToClipboard}
-            >
-              <Translate>批量复制所有密码</Translate>
-            </Button>
+        {/* Result Panel */}
+        <Grid size={{xs: 12, md: 7, lg: 8}}>
+          <Box sx={{p: 2.5, border: '1px solid #e0e0e0', borderRadius: 2}}>
+            <Box sx={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2}}>
+              <Typography variant="subtitle1" sx={{fontWeight: 700}}>
+                <Translate>生成结果</Translate>
+                <Chip label={passwordList.length} size="small" sx={{ml: 1}}/>
+              </Typography>
+              {passwordList.length > 1 && (
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() => copyToClipboard(passwordList.join('\n'), translate({message: '已复制全部密码'}))}
+                >
+                  <Translate>批量复制</Translate>
+                </Button>
+              )}
+            </Box>
 
             <Stack spacing={2}>
-              {passwordList.map((password, index) => {
-                const crackTime = calculateCrackTime(password);
-                const formattedTime = formatCrackTime(crackTime);
-                const complexityColor = getPasswordComplexityColor(crackTime);
-
-                return (
-                  <>
-                    <Box
-                      key={index}
+              {passwordList.map((password, index) => (
+                <Box
+                  key={index}
+                  sx={{
+                    p: 1.5,
+                    backgroundColor: '#f8f9fa',
+                    borderRadius: 1.5,
+                    border: '1px solid #e9ecef',
+                  }}
+                >
+                  <Box sx={{display: 'flex', alignItems: 'center', gap: 1, mb: 1}}>
+                    <Typography
+                      variant="body2"
                       sx={{
-                        display: 'flex',
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        backgroundColor: complexityColor === 'error' ? '#FFCDD2' : complexityColor === 'warn' ? '#FFF59D' : '#C8E6C9',
-                        padding: 2,
-                        borderRadius: '4px'
+                        flex: 1,
+                        fontFamily: '"JetBrains Mono", monospace',
+                        fontSize: '0.9rem',
+                        wordBreak: 'break-all',
+                        cursor: 'pointer',
+                        userSelect: 'all',
                       }}
+                      onClick={() => copyToClipboard(password)}
                     >
-                      <TextField
-                        value={password}
-                        fullWidth
-                        variant="outlined"
-                        onClick={() => copyToClipboard(password)}
-                        InputProps={{
-                          style: {cursor: 'pointer'}
-                        }}
-                      />
-
-                      <Button
-                        variant="outlined"
-                        onClick={() => copyToClipboard(password)}
-                        sx={{marginLeft: 2}}
-                      >
-                        <Translate>复制</Translate>
-                      </Button>
-                    </Box>
-                    <Box>
-                      <Typography variant="body2"
-                                  sx={{color: complexityColor === 'error' ? '#d32f2f' : complexityColor === 'warn' ? '#fbc02d' : '#388e3c'}}>
-                        <Translate>破解时间</Translate>: {formattedTime}
-                      </Typography>
-                    </Box>
-                  </>
-                );
-              })}
+                      {password}
+                    </Typography>
+                    <Tooltip title={translate({message: '复制'})}>
+                      <IconButton size="small" onClick={() => copyToClipboard(password)}>
+                        <ContentCopyIcon fontSize="small"/>
+                      </IconButton>
+                    </Tooltip>
+                  </Box>
+                  <PasswordStrengthMeter password={password}/>
+                </Box>
+              ))}
             </Stack>
+
+            {passwordList.length === 0 && (
+              <Box sx={{textAlign: 'center', py: 6, color: '#9e9e9e'}}>
+                <Translate>点击"生成密码"开始</Translate>
+              </Box>
+            )}
           </Box>
         </Grid>
       </Grid>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={2000}
+        onClose={() => setSnackbar(s => ({...s, open: false}))}
+        anchorOrigin={{vertical: 'top', horizontal: 'center'}}
+      >
+        <Alert severity={snackbar.severity} onClose={() => setSnackbar(s => ({...s, open: false}))}>
+          {snackbar.msg}
+        </Alert>
+      </Snackbar>
     </Container>
   );
 }

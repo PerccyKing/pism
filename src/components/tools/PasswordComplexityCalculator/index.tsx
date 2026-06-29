@@ -1,95 +1,59 @@
 import React, {useState} from 'react';
-import {TextField, Button, Box, Typography, Stack, Alert} from '@mui/material';
-import Translate, {translate} from "@docusaurus/Translate";
+import {Box, Container, TextField, Typography} from '@mui/material';
+import Translate, {translate} from '@docusaurus/Translate';
+import PasswordStrengthMeter from '@site/src/components/PasswordStrengthMeter';
+import PrivacyNotice from '@site/src/components/PrivacyNotice';
 
 const PasswordComplexityCalculator = () => {
-  const defaultUppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  const defaultNumbers = '0123456789';
-  const defaultSymbols = '!@#$%^&*()-_=+[]{}|;:,.<>?/';
-
   const [password, setPassword] = useState('');
-  const [complexity, setComplexity] = useState('');
-  const [crackTime, setCrackTime] = useState('');
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
-
-  const calculateCrackTime = (password: string) => {
-    let availableCharset = 'abcdefghijklmnopqrstuvwxyz'; // 默认小写字母
-
-    // 检查密码字符集
-    const length = password.length;
-
-    if (/[A-Z]/.test(password)) availableCharset += defaultUppercase; // 如果包含大写字母
-    if (/\d/.test(password)) availableCharset += defaultNumbers; // 如果包含数字
-    if (/[^a-zA-Z0-9]/.test(password)) availableCharset += defaultSymbols; // 如果包含符号
-
-    const charsetSize = availableCharset.length;
-
-    // 假设每秒尝试 10 亿次
-    const attemptsPerSecond = 1e9;
-
-    // 计算总的密码空间
-    const totalCombinations = Math.pow(charsetSize, length);
-
-    // 计算破解时间（秒）
-    const timeInSeconds = totalCombinations / attemptsPerSecond;
-
-    // 将秒数转化为年、月、天、小时、分钟、秒的格式
-    const years = Math.floor(timeInSeconds / (60 * 60 * 24 * 365));
-    const months = Math.floor(timeInSeconds / (60 * 60 * 24 * 30));
-    const days = Math.floor(timeInSeconds / (60 * 60 * 24));
-    const hours = Math.floor((timeInSeconds % (60 * 60 * 24)) / (60 * 60));
-    const minutes = Math.floor((timeInSeconds % (60 * 60)) / 60);
-    const seconds = Math.floor(timeInSeconds % 60);
-
-    // 格式化时间输出
-    const formattedTime = `${years}年 ${months}月 ${days}天 ${hours}小时 ${minutes}分钟 ${seconds}秒`;
-
-    // 计算复杂度颜色
-    let complexityLevel = '';
-    if (years > 0) complexityLevel = 'strong';
-    else if (months > 0) complexityLevel = 'medium';
-    else complexityLevel = 'weak';
-
-    setCrackTime(formattedTime);
-    setComplexity(complexityLevel);
-    setSnackbarOpen(true);
-  };
 
   return (
-    <Box sx={{padding: 3}}>
-      <Typography variant="h6" gutterBottom>
-        <Translate>密码复杂度计算器</Translate>
-      </Typography>
+    <Container maxWidth="md" sx={{py: 3}}>
+      <Box sx={{p: 3, border: '1px solid #e0e0e0', borderRadius: 2}}>
+        <Typography variant="h6" gutterBottom sx={{fontWeight: 700}}>
+          <Translate>密码复杂度计算器</Translate>
+        </Typography>
 
-      <TextField
-        label={translate({message: "输入密码"})}
-        variant="outlined"
-        fullWidth
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        sx={{marginBottom: 2}}
-      />
+        <PrivacyNotice
+          content={translate({message: '所有密码强度计算均在本地完成，不会记录或上传您的密码数据。'})}
+        />
 
-      <Button
-        variant="contained"
-        color="primary"
-        fullWidth
-        onClick={() => calculateCrackTime(password)}
-      >
-        <Translate>计算密码复杂度</Translate>
-      </Button>
+        <TextField
+          label={translate({message: '输入密码'})}
+          variant="outlined"
+          fullWidth
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          sx={{mb: 3}}
+        />
 
-      {snackbarOpen && (
-        <Box sx={{marginTop: 2}}>
-          <Typography variant="body1" sx={{marginBottom: 1}}>
-            <Translate>密码破解时间</Translate>: {crackTime}
-          </Typography>
-          <Alert severity={complexity === 'strong' ? 'success' : complexity === 'medium' ? 'warning' : 'error'}>
-            <Translate>密码复杂度</Translate>: {complexity === 'strong' ? translate({message: '强'}) : complexity === 'medium' ? translate({message: '中'}) : translate({message: '弱'})}
-          </Alert>
+        <PasswordStrengthMeter password={password}/>
+      </Box>
+
+      {/* Usage guide */}
+      <Box sx={{p: 3, mt: 3, border: '1px solid #e0e0e0', borderRadius: 2}}>
+        <Typography variant="subtitle1" sx={{fontWeight: 700, mb: 2}}>
+          <Translate>密码强度评分标准</Translate>
+        </Typography>
+        <Box component="ul" sx={{pl: 2, m: 0, '& li': {mb: 0.5, fontSize: '0.9rem', color: '#475569'}}}>
+          <li><Translate>密码长度（建议12位以上）</Translate></li>
+          <li><Translate>字符多样性（包含大小写字母、数字、特殊字符）</Translate></li>
+          <li><Translate>避免连续字符（如：abc、123）</Translate></li>
+          <li><Translate>避免重复字符（如：aaa、111）</Translate></li>
+          <li><Translate>避免键盘模式（如：qwerty、asdf）</Translate></li>
         </Box>
-      )}
-    </Box>
+
+        <Typography variant="subtitle1" sx={{fontWeight: 700, mt: 2, mb: 1}}>
+          <Translate>评分等级</Translate>
+        </Typography>
+        <Box component="ul" sx={{pl: 2, m: 0, '& li': {mb: 0.5, fontSize: '0.9rem', color: '#475569'}}}>
+          <li><Translate>弱：0-39分</Translate></li>
+          <li><Translate>中等：40-59分</Translate></li>
+          <li><Translate>强：60-79分</Translate></li>
+          <li><Translate>非常强：80-100分</Translate></li>
+        </Box>
+      </Box>
+    </Container>
   );
 };
 

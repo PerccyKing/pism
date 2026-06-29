@@ -2,206 +2,234 @@ import React, {useState, useEffect} from 'react';
 import {
   Box,
   Button,
-  TextField,
+  Chip,
   Container,
   Grid,
+  Stack,
+  TextField,
   Typography,
-  FormControlLabel,
-  Checkbox,
+  IconButton,
+  Tooltip,
   Snackbar,
   Alert,
+  Divider,
 } from '@mui/material';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import {Snowflake} from '@sapphire/snowflake';
 import Translate, {translate} from "@docusaurus/Translate";
 
 export default function SnowflakePage() {
-  const [nanoidList, setNanoIDList] = useState<string[]>([]);
-  const [epoch, setEpoch] = useState<string>('2020-01-01'); // Epoch 时间
-  const [count, setCount] = useState<number>(1); // 生成数量
-  const [workerId, setWorkerId] = useState<number>(0); // Worker ID
-  const [processId, setProcessId] = useState<number>(1); // Process ID
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
-  const [snackbarMessage, setSnackbarMessage] = useState('');
-  const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error'>('success');
+  const [snowflakeList, setSnowflakeList] = useState<string[]>([]);
+  const [epoch, setEpoch] = useState<string>('2020-01-01');
+  const [count, setCount] = useState<number>(1);
+  const [workerId, setWorkerId] = useState<number>(0);
+  const [processId, setProcessId] = useState<number>(1);
+  const [snackbar, setSnackbar] = useState<{open: boolean; msg: string; severity: 'success' | 'error'}>({
+    open: false, msg: '', severity: 'success',
+  });
 
-  // Auto-generate Snowflakes when the page loads
   useEffect(() => {
     generateSnowflakes();
   }, []);
 
   const generateSnowflakes = () => {
-    const epochDate = new Date(epoch);
-    const snowflakeGenerator = new Snowflake(epochDate);
-
-    const newNanoIDList: string[] = [];
-    for (let i = 0; i < count; i++) {
-      const snowflake = snowflakeGenerator.generate({
-        timestamp: Date.now(),
-        workerId: BigInt(workerId),  // Convert number to bigint
-        processId: BigInt(processId)
-      });
-      newNanoIDList.push(snowflake.toString());
-    }
-
-    setNanoIDList(newNanoIDList);
-  };
-
-  const copyToClipboard = async (nanoID: string) => {
     try {
-      await navigator.clipboard.writeText(nanoID);
-      setSnackbarSeverity('success');
-      setSnackbarMessage(translate({message: 'Snowflake 复制成功！'}));
-    } catch (error) {
-      console.error('复制失败:', error);
-      setSnackbarSeverity('error');
-      setSnackbarMessage(translate({message: '复制失败，请重试。'}));
-    } finally {
-      setSnackbarOpen(true);
+      const epochDate = new Date(epoch);
+      if (isNaN(epochDate.getTime())) {
+        setSnackbar({open: true, msg: translate({message: '请输入有效的日期'}), severity: 'error'});
+        return;
+      }
+      const snowflakeGenerator = new Snowflake(epochDate);
+      const list: string[] = [];
+      for (let i = 0; i < count; i++) {
+        try {
+          const snowflake = snowflakeGenerator.generate({
+            timestamp: Date.now(),
+            workerId: BigInt(workerId),
+            processId: BigInt(processId),
+          });
+          list.push(snowflake.toString());
+        } catch (e) {
+          list.push(translate({message: '生成失败'}));
+        }
+      }
+      setSnowflakeList(list);
+    } catch (e) {
+      setSnackbar({open: true, msg: translate({message: 'Epoch 时间格式错误'}), severity: 'error'});
     }
   };
 
-  const copyAllToClipboard = async () => {
+  const copyToClipboard = async (text: string, msg?: string) => {
     try {
-      await navigator.clipboard.writeText(nanoidList.join('\n'));
-      setSnackbarSeverity('success');
-      setSnackbarMessage(translate({message: '所有 Snowflake 复制成功！'}));
-    } catch (error) {
-      console.error('批量复制失败:', error);
-      setSnackbarSeverity('error');
-      setSnackbarMessage(translate({message: '批量复制失败，请重试。'}));
-    } finally {
-      setSnackbarOpen(true);
+      await navigator.clipboard.writeText(text);
+      setSnackbar({open: true, msg: msg || translate({message: '复制成功！'}), severity: 'success'});
+    } catch {
+      setSnackbar({open: true, msg: translate({message: '复制失败'}), severity: 'error'});
     }
-  };
-
-  const handleGenerate = () => {
-    generateSnowflakes();
   };
 
   return (
-    <Container maxWidth="lg" sx={{padding: 4}}>
-      <Grid container spacing={2}>
-        <Grid size={{xs: 12, md: 6, lg: 4}}>
-          {/* Snackbar for copy success or error */}
-          <Snackbar
-            open={snackbarOpen}
-            autoHideDuration={3000}
-            onClose={() => setSnackbarOpen(false)}
-            anchorOrigin={{vertical: 'top', horizontal: 'center'}}
-          >
-            <Alert
-              onClose={() => setSnackbarOpen(false)}
-              severity={snackbarSeverity}
-              sx={{width: '100%'}}
-            >
-              {snackbarMessage}
-            </Alert>
-          </Snackbar>
-
-          <Box sx={{padding: 2, border: '1px solid #ddd', borderRadius: '8px', marginBottom: 4}}>
-            <Typography variant="h6" gutterBottom>
+    <Container maxWidth="lg" sx={{py: 3}}>
+      <Grid container spacing={3}>
+        {/* Config Panel */}
+        <Grid size={{xs: 12, md: 5, lg: 4}}>
+          <Box sx={{p: 2.5, border: '1px solid #e0e0e0', borderRadius: 2, backgroundColor: '#fafafa'}}>
+            <Typography variant="h6" gutterBottom sx={{fontWeight: 700}}>
               <Translate>Snowflake 配置</Translate>
             </Typography>
 
-            {/* Epoch Input */}
-            <TextField
-              value={epoch}
-              onChange={(e) => setEpoch(e.target.value)}
-              label={translate({message: "Epoch 时间"})}
-              fullWidth
-              variant="outlined"
-              sx={{marginBottom: 2}}
-            />
+            {/* Epoch */}
+            <Box sx={{mb: 2}}>
+              <TextField
+                value={epoch}
+                onChange={(e) => setEpoch(e.target.value)}
+                label={translate({message: 'Epoch 时间'})}
+                fullWidth
+                size="small"
+                type="date"
+                slotProps={{inputLabel: {shrink: true}}}
+              />
+              <Box sx={{display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5}}>
+                <InfoOutlinedIcon sx={{fontSize: 14, color: '#9e9e9e'}}/>
+                <Typography variant="caption" color="text.secondary">
+                  <Translate>起始时间点，用于计算时间戳偏移量</Translate>
+                </Typography>
+              </Box>
+            </Box>
 
-            {/* Worker ID Input */}
-            <TextField
-              type="number"
-              value={workerId}
-              onChange={(e) => setWorkerId(Number(e.target.value))}
-              label="Worker ID"
-              fullWidth
-              variant="outlined"
-              sx={{marginBottom: 2}}
-            />
+            {/* Worker ID */}
+            <Box sx={{mb: 2}}>
+              <TextField
+                type="number"
+                value={workerId}
+                onChange={(e) => setWorkerId(Math.max(0, Math.min(31, Number(e.target.value))))}
+                label="Worker ID"
+                fullWidth
+                size="small"
+                inputProps={{min: 0, max: 31}}
+              />
+              <Box sx={{display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5}}>
+                <InfoOutlinedIcon sx={{fontSize: 14, color: '#9e9e9e'}}/>
+                <Typography variant="caption" color="text.secondary">
+                  <Translate>区分不同工作节点，范围 0-31</Translate>
+                </Typography>
+              </Box>
+            </Box>
 
-            {/* Process ID Input */}
-            <TextField
-              type="number"
-              value={processId}
-              onChange={(e) => setProcessId(Number(e.target.value))}
-              label="Process ID"
-              fullWidth
-              variant="outlined"
-              sx={{marginBottom: 2}}
-            />
+            {/* Process ID */}
+            <Box sx={{mb: 2}}>
+              <TextField
+                type="number"
+                value={processId}
+                onChange={(e) => setProcessId(Math.max(0, Math.min(31, Number(e.target.value))))}
+                label="Process ID"
+                fullWidth
+                size="small"
+                inputProps={{min: 0, max: 31}}
+              />
+              <Box sx={{display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5}}>
+                <InfoOutlinedIcon sx={{fontSize: 14, color: '#9e9e9e'}}/>
+                <Typography variant="caption" color="text.secondary">
+                  <Translate>区分同一节点的不同进程，范围 0-31</Translate>
+                </Typography>
+              </Box>
+            </Box>
 
-            {/* Count Input */}
+            <Divider sx={{my: 2}}/>
+
             <TextField
               type="number"
               value={count}
-              onChange={(e) => setCount(Number(e.target.value))}
-              label={translate({message: "生成个数"})}
+              onChange={(e) => setCount(Math.max(1, Math.min(100, Number(e.target.value))))}
+              label={translate({message: '生成个数'})}
               fullWidth
-              variant="outlined"
-              sx={{marginBottom: 2}}
+              sx={{mb: 2}}
+              size="small"
+              inputProps={{min: 1, max: 100}}
             />
 
-            {/* Generate Button */}
-            <Button variant="contained" color="primary" fullWidth onClick={handleGenerate}>
-              <Translate>
-                生成 Snowflakes
-              </Translate>
+            <Button variant="contained" color="primary" fullWidth onClick={generateSnowflakes} size="large">
+              <Translate>生成 Snowflake</Translate>
             </Button>
           </Box>
         </Grid>
-        <Grid size={{xs: 12, md: 6, lg: 8}}>
-          <Box sx={{padding: 2, border: '1px solid #ddd', borderRadius: '8px'}}>
-            {/* Batch Copy Button */}
-            <Button
-              variant="outlined"
-              color="secondary"
-              sx={{marginBottom: 2}}
-              fullWidth
-              onClick={copyAllToClipboard}
-            >
-              <Translate>批量复制所有 Snowflake</Translate>
-            </Button>
 
-            {/* Display Snowflakes List */}
-            <div>
-              {nanoidList.map((nanoID, index) => (
+        {/* Result Panel */}
+        <Grid size={{xs: 12, md: 7, lg: 8}}>
+          <Box sx={{p: 2.5, border: '1px solid #e0e0e0', borderRadius: 2}}>
+            <Box sx={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2}}>
+              <Typography variant="subtitle1" sx={{fontWeight: 700}}>
+                <Translate>生成结果</Translate>
+                <Chip label={snowflakeList.length} size="small" sx={{ml: 1}}/>
+              </Typography>
+              {snowflakeList.length > 1 && (
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() => copyToClipboard(snowflakeList.join('\n'), translate({message: '已复制全部 Snowflake'}))}
+                >
+                  <Translate>批量复制</Translate>
+                </Button>
+              )}
+            </Box>
+
+            <Stack spacing={1}>
+              {snowflakeList.map((id, index) => (
                 <Box
                   key={index}
                   sx={{
                     display: 'flex',
-                    flexDirection: 'row',
                     alignItems: 'center',
-                    justifyContent: 'space-between',
-                    marginBottom: 2,
+                    gap: 1,
+                    p: 1,
+                    backgroundColor: '#f8f9fa',
+                    borderRadius: 1,
+                    border: '1px solid #e9ecef',
                   }}
                 >
-                  <TextField
-                    value={nanoID}
-                    fullWidth
-                    variant="outlined"
-                    onClick={() => copyToClipboard(nanoID)}
-                    InputProps={{
-                      style: {cursor: 'pointer'},
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      flex: 1,
+                      fontFamily: '"JetBrains Mono", monospace',
+                      fontSize: '0.85rem',
+                      wordBreak: 'break-all',
+                      cursor: 'pointer',
+                      userSelect: 'all',
                     }}
-                  />
-                  <Button
-                    variant="outlined"
-                    onClick={() => copyToClipboard(nanoID)}
-                    sx={{marginLeft: 2}}
+                    onClick={() => copyToClipboard(id)}
                   >
-                    <Translate>复制</Translate>
-                  </Button>
+                    {id}
+                  </Typography>
+                  <Tooltip title={translate({message: '复制'})}>
+                    <IconButton size="small" onClick={() => copyToClipboard(id)}>
+                      <ContentCopyIcon fontSize="small"/>
+                    </IconButton>
+                  </Tooltip>
                 </Box>
               ))}
-            </div>
+            </Stack>
+
+            {snowflakeList.length === 0 && (
+              <Box sx={{textAlign: 'center', py: 6, color: '#9e9e9e'}}>
+                <Translate>点击"生成 Snowflake"开始</Translate>
+              </Box>
+            )}
           </Box>
         </Grid>
       </Grid>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={2000}
+        onClose={() => setSnackbar(s => ({...s, open: false}))}
+        anchorOrigin={{vertical: 'top', horizontal: 'center'}}
+      >
+        <Alert severity={snackbar.severity} onClose={() => setSnackbar(s => ({...s, open: false}))}>
+          {snackbar.msg}
+        </Alert>
+      </Snackbar>
     </Container>
   );
 }

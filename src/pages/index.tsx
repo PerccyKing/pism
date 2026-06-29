@@ -1,165 +1,173 @@
-import React, {ReactNode} from 'react';
+import React, {ReactNode, useMemo, useState} from 'react';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import Layout from '@theme/Layout';
 import {Analytics} from "@vercel/analytics/react"
 import {SpeedInsights} from '@vercel/speed-insights/react';
-import {Button, Grid, Popover, Stack, Typography} from "@mui/material";
+import {Box, Container, Grid, InputAdornment, TextField, Typography} from "@mui/material";
+import SearchIcon from '@mui/icons-material/Search';
 import Translate, {translate} from "@docusaurus/Translate";
-import Link from "@docusaurus/Link";
 import CardInfo from "@site/src/components/CardInfo";
 import MiniAppQRCode from "@site/src/components/MiniAppQRCode";
-
 import {indexCard} from "@site/src/config/index.config";
-
-// import { useColorMode } from '@docusaurus/theme-common';
-
-
-// 定义 CSS 动画
-const fadeInAnimation = `
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-      transform: translateY(20px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-`;
 
 export default function Home(): ReactNode {
   const {siteConfig} = useDocusaurusContext();
+  const [query, setQuery] = useState('');
 
-  const [anchorEl, setAnchorEl] = React.useState<object>({});
-
-
-  const words = ["Plan", "Implement", "Simplify", "Master"];
-
-  const projects = [
-    {
-      title: 'ezasse',
-      desc: translate({message: '项目脚本管理方案'}),
-      tags: [translate({message: '版本管理'}), "java", "sql"],
-      url: 'https:ezasse.pism.com.cn',
-      logo: '/img/ezasse-bg.svg'
-    },
-    {
-      title: 'Batslog',
-      desc: translate({message: 'mybatis 日志插件'}),
-      tags: ["mybatis", "sql"],
-      url: 'https://github.com/PerccyKing/batslog',
-      logo: '/img/batslog.svg'
-    }
-  ]
-
-  const handlePopoverOpen = (event: React.MouseEvent<HTMLElement>, id: string) => {
-    const newAnchorEl = {...anchorEl};
-    newAnchorEl[id] = event.currentTarget;
-    setAnchorEl(newAnchorEl);
-  };
-
-  const handlePopoverClose = (id: string) => {
-    const newAnchorEl = {...anchorEl};
-    newAnchorEl[id] = null;
-    setAnchorEl(newAnchorEl);
-  };
+  const filteredGroups = useMemo(() => {
+    if (!query.trim()) return indexCard;
+    const q = query.trim().toLowerCase();
+    return indexCard
+      .map(group => ({
+        ...group,
+        cards: group.cards.filter(
+          c => c.name.toLowerCase().includes(q) || (c.desc || '').toLowerCase().includes(q)
+        ),
+      }))
+      .filter(group =>
+        group.name.toLowerCase().includes(q) ||
+        (group.desc || '').toLowerCase().includes(q) ||
+        group.cards.length > 0
+      );
+  }, [query]);
 
   return (
     <Layout
-      title={translate({message: 'PISM 开源'})}
-      description={translate({message: "PISM 开源平台提供丰富的在线开发工具，包括 UUID、Snowflake ID、NanoID 批量生成器，以及在线加密、解密、格式转换等实用功能，助力开发者高效构建与管理项目。"})}
+      title="PISM"
+      description={translate({message: "PISM 提供各种在线开发工具"})}
     >
-      <style>{fadeInAnimation}</style>
       <main>
-        <Grid container spacing={2}>
-          <Grid size={{xs: 12, md: 6, lg: 4}}>
-            <div className="flex flex-col items-center justify-center h-screen bg-gray-100">
-              {words.map((word, index) => (
-                <h1
-                  key={index}
-                  className="text-9xl font-bold text-blue-600 mb-8 animate-bounce delay-[200ms*var(--i)]"
-                  style={{
-                    ...({'--i': index} as any),
-                    animation: `fadeIn 1s ease-out ${index * 0.2}s both`
-                  }}
-                >
-                  {word}
-                </h1>
-              ))}
-            </div>
-          </Grid>
-          <Grid size={{xs: 12, md: 6, lg: 8}}>
+        {/* Hero */}
+        <Box sx={{
+          textAlign: 'center',
+          pt: {xs: 6, md: 10},
+          pb: {xs: 4, md: 6},
+          px: 2,
+        }}>
+          <Box
+            component="img"
+            src="/img/pism.svg"
+            alt="PISM"
+            sx={{width: {xs: 64, md: 80}, height: {xs: 64, md: 80}, mb: 2}}
+          />
+          <Typography
+            component="h1"
+            sx={{
+              fontSize: {xs: '2.2rem', md: '3rem'},
+              fontWeight: 800,
+              color: '#1d1d1f',
+              letterSpacing: '-0.02em',
+              mb: 1,
+            }}
+          >
+            PISM
+          </Typography>
+          <Typography
+            sx={{
+              fontSize: {xs: '1rem', md: '1.15rem'},
+              color: '#86868b',
+              fontWeight: 400,
+              mb: 0.5,
+            }}
+          >
+            Plan · Implement · Simplify · Master
+          </Typography>
+          <Typography
+            sx={{
+              fontSize: '0.95rem',
+              color: '#86868b',
+              fontWeight: 400,
+            }}
+          >
+            <Translate>各种在线开发与实用工具</Translate>
+          </Typography>
+        </Box>
 
-            <Stack spacing={6} style={{margin: "10px"}}>
-              <Link
-                to="/docs/id_gen">
-                <Button variant="contained"><Translate>全部在线工具</Translate></Button>
-              </Link>
-              {indexCard.map(cardGroup => {
-                return (<Grid key={cardGroup.id} rowSpacing={2}>
-                  <Typography variant="h5" component="div">
-                    <b>{cardGroup.name}</b>
-                  </Typography>
-                  <Typography gutterBottom sx={{color: 'text.secondary', fontSize: 14}}>
-                    {cardGroup.desc}
-                  </Typography>
-                  <Grid container spacing={2}>
+        {/* Search */}
+        <Container maxWidth="sm" sx={{mb: 6}}>
+          <TextField
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={translate({message: '搜索工具...'})}
+            fullWidth
+            size="small"
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon sx={{color: '#86868b', fontSize: 20}}/>
+                  </InputAdornment>
+                ),
+              },
+            }}
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                borderRadius: '12px',
+                backgroundColor: '#f5f5f7',
+                fontSize: '0.95rem',
+                '& fieldset': {borderColor: 'transparent'},
+                '&:hover fieldset': {borderColor: '#d2d2d7'},
+                '&.Mui-focused fieldset': {borderColor: '#860e0e', borderWidth: 1},
+                '&.Mui-focused': {backgroundColor: '#fff'},
+              },
+            }}
+          />
+        </Container>
 
-                    {cardGroup.cards.map(card => {
-                      return (<Grid
-                        key={card.id}
-                        size={{xs: 12, md: 6, lg: 4}}>
-                        <div
-                          aria-owns={Boolean(anchorEl[card.id]) ? 'mouse-over-popover' : undefined}
-                          aria-haspopup="true"
-                          // onMouseEnter={(e) => handlePopoverOpen(e, card.id)}
-                          // onMouseLeave={(e) => handlePopoverClose(card.id)}
-                        >
-                          <CardInfo
-                            item={{
-                              type: "link",
-                              label: card.name,
-                              href: card.href,
-                              docId: card.id,
-                              description: card.desc,
-                              unlisted: true
-                            }}
-                          ></CardInfo>
-                        </div>
-
-                        <Popover
-                          key={card.id}
-                          id={card.id}
-                          sx={{pointerEvents: 'none'}}
-                          open={Boolean(anchorEl[card.id])}
-                          anchorEl={anchorEl[card.id]}
-                          anchorOrigin={{
-                            vertical: 'bottom',
-                            horizontal: 'left',
-                          }}
-                          transformOrigin={{
-                            vertical: 'top',
-                            horizontal: 'left',
-                          }}
-                          onClose={(e) => handlePopoverClose(card.id)}
-                          disableRestoreFocus
-                        >
-                          {React.createElement(card.component)}
-                        </Popover>
-                      </Grid>)
-                    })}
-
-
+        {/* Tool Groups */}
+        <Container maxWidth="lg" sx={{pb: 8}}>
+          {filteredGroups.map((group) => (
+            <Box key={group.id} sx={{mb: 5}}>
+              <Typography
+                component="h2"
+                sx={{
+                  fontSize: '1.3rem',
+                  fontWeight: 700,
+                  color: '#1d1d1f',
+                  mb: 0.5,
+                }}
+              >
+                {group.name}
+              </Typography>
+              {group.desc && (
+                <Typography sx={{fontSize: '0.85rem', color: '#86868b', mb: 2}}>
+                  {group.desc}
+                </Typography>
+              )}
+              <Grid container spacing={{xs: 1.5, md: 2}}>
+                {group.cards.map(card => (
+                  <Grid key={card.id} size={{xs: 12, sm: 6, md: 4, lg: 3}}>
+                    <CardInfo
+                      item={{
+                        type: "link",
+                        label: card.name,
+                        href: card.href,
+                        docId: card.id,
+                        description: card.desc,
+                        unlisted: true,
+                      }}
+                    />
                   </Grid>
-                </Grid>)
-              })}
-              {/* 小程序二维码展示 */}
-              <MiniAppQRCode />
-            </Stack>
-          </Grid>
+                ))}
+              </Grid>
+            </Box>
+          ))}
 
-        </Grid>
+          {filteredGroups.length === 0 && (
+            <Box sx={{textAlign: 'center', py: 8, color: '#86868b'}}>
+              <Translate>未找到匹配的工具</Translate>
+            </Box>
+          )}
+        </Container>
+
+        {/* QR Code */}
+        <Box sx={{
+          display: 'flex',
+          justifyContent: 'center',
+          pb: 8,
+        }}>
+          <MiniAppQRCode/>
+        </Box>
       </main>
       <Analytics/>
       <SpeedInsights/>
